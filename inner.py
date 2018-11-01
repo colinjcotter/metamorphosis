@@ -18,7 +18,7 @@ w = Function(W)
 I, z, theta = split(w)
 dI, dz, dtheta = TestFunctions(W)
 
-eps = 1.0e-2
+eps = Constant(1.0)
 c = Constant(0.2)
 sig = Constant(1.0)
 
@@ -36,20 +36,30 @@ I0 = conditional(abs(x-c*t) < 0.3, 1.0, 0.0)
 thetaS = theta('+')
 dthetaS = dtheta('+')
 
+dS0 = dS(degree=6)
+
 eqn = (
     dz*z*dx + div(b*dz)*I*dx
     - jump(b*dz,n)*thetaS*dS - inner(b*dz,n)*I0*ds
     +  dI*div(b*z)*dx
-    - jump(b*z,n)*dthetaS*dS +
-    sig*thetaS*dthetaS/sqrt(eps**2 + thetaS**2)*dS 
-)
+    - jump(b*z,n)*dthetaS*dS
+    + sig*thetaS*dthetaS*dS0
+)        
 
-zProb = NonlinearVariationalProblem(eqn, w)
-sparams = {'ksp_type':'preonly',
+bcs = [DirichletBC(W.sub(2), 0, (1,2))]
+
+zProb = NonlinearVariationalProblem(eqn, w, bcs=bcs)
+sparams = {'ksp_type':'gmres',
+           'snes_linesearch':'basic', 
            'ksp_monitor':True,
-           'mat_type':'aij',
-           'pc_type':'lu',
-           'pc_factor_mat_solver_type':'mumps'}
+           'ksp_converged_reason':True,
+           'mat_type':'matfree',
+           'pc_type':'python',
+           'pc_python_type':'scpc.HybridSCPC',
+           'hybrid_sc_ksp_type':'gmres',
+           'hybrid_sc_ksp_monitor':True,
+           'hybrid_sc_pc_type':'ilu',
+           'hybrid_sc_pc_factor_mat_solver_type':'mumps'}
 zSolver = NonlinearVariationalSolver(zProb,
                                      solver_parameters=sparams)
 
