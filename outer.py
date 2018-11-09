@@ -30,8 +30,8 @@ n = FacetNormal(mesh)
 
 x, t = SpatialCoordinate(mesh)
 
-#I0 = conditional(abs(x-0.5 - c*t) < 0.2, 1.0, 0.0)
-I0 = conditional(abs(x-0.5) < 0.2, 1.0, 0.0)
+I0 = conditional(abs(x-0.5 - c*t) < 0.2, 1.0, 0.0)
+#I0 = conditional(abs(x-0.5) < 0.2, 1.0, 0.0)
 #u = Function(U).interpolate(c)
 b = as_vector([u,1])
 
@@ -82,7 +82,7 @@ zSolver.solve()
 
 J = assemble(1./2*z*z*dx)
 m = Control(u)
-Jhat = ReducedFunctionL(J, m)
+Jhat = ReducedFunctional(J, m)
 
 g_opt = minimize(Jhat, options={"disp": True})
 

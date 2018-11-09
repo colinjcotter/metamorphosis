@@ -18,9 +18,9 @@ w = Function(W)
 z, I, theta = split(w)
 dz, dI, dtheta = TestFunctions(W)
 
-eps = Constant(1.0e-4)
+eps = Constant(1.0e-8)
 c = Constant(0.2)
-sig = Constant(1.0e-2)
+sig = Constant(1.0e-4)
 
 U = FunctionSpace(mesh, "CG", 1)
 
@@ -30,8 +30,9 @@ x, t = SpatialCoordinate(mesh)
 
 #I0 = conditional(abs(x-0.5 - c*t) < 0.2, 1.0, 0.0)
 I0 = conditional(abs(x-0.5) < 0.2, 1.0, 0.0)
-#u = Function(U).interpolate(c)
-u = Function(U).interpolate(cos(pi*t))
+u = Function(U)
+#u.interpolate(c)
+u.interpolate(cos(pi*t))
 b = as_vector([u,1])
 
 thetaS = theta('+')
@@ -46,6 +47,8 @@ eqn = (
     +  dI*div(b*z)*dx
     + jump(b*z,n)*dthetaS*dS
 )
+
+eqn += sig*dtheta*theta*ds
 
 eqn1 = eqn + sig*eps*thetaS*dthetaS/(eps**2 + thetaS**2)**0.5*dS0
 eqn0 = eqn + sig*thetaS*dthetaS*dS
@@ -68,11 +71,11 @@ sparams0 = {'ksp_type':'preonly',
             'mat_type':'aij',
             'pc_type':'lu'}
 
-z0Prob = NonlinearVariationalProblem(eqn0, w, bcs=bcs)
+z0Prob = NonlinearVariationalProblem(eqn0, w)
 z0Solver = NonlinearVariationalSolver(z0Prob,
                                       solver_parameters=sparams)
 
-zProb = NonlinearVariationalProblem(eqn1, w, bcs=bcs)
+zProb = NonlinearVariationalProblem(eqn1, w)
 zSolver = NonlinearVariationalSolver(zProb,
                                      solver_parameters=sparams)
 
