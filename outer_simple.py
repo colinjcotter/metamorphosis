@@ -23,6 +23,7 @@ c = Constant(0.2)
 sig = Constant(1.0e-2)
 
 U = FunctionSpace(mesh, "CG", 1)
+u = Function(U)
 
 n = FacetNormal(mesh)
 
@@ -31,7 +32,6 @@ x, t = SpatialCoordinate(mesh)
 #I0 = conditional(abs(x-0.5 - c*t) < 0.2, 1.0, 0.0)
 I0 = conditional(abs(x-0.5) < 0.2, 1.0, 0.0)
 #u = Function(U).interpolate(c)
-u = Function(U).interpolate(cos(pi*t))
 b = as_vector([u,1])
 
 thetaS = theta('+')
@@ -47,8 +47,9 @@ eqn = (
     + jump(b*z,n)*dthetaS*dS
 )
 
-eqn1 = eqn + sig*eps*thetaS*dthetaS/(eps**2 + thetaS**2)**0.5*dS0
 eqn0 = eqn + sig*thetaS*dthetaS*dS
+L1term = sig*eps*thetaS*dthetaS/(eps**2 + thetaS**2)**0.5*dS0
+eqn1 = eqn + L1term
 
 bcs = [DirichletBC(W.sub(2), 0, (1,2))]
 
@@ -75,6 +76,18 @@ z0Solver = NonlinearVariationalSolver(z0Prob,
 zProb = NonlinearVariationalProblem(eqn1, w, bcs=bcs)
 zSolver = NonlinearVariationalSolver(zProb,
                                      solver_parameters=sparams)
+
+tol = 1.0e10
+J = 0.5*z*z*dx + sig*eps**2*sqrt(eps**2 + thetaS**2)*dS
+
+thetaS*dthetaS/(eps**2 + thetaS**2)*dS0
+         
+while tol > 1.0e-5:
+    z0Solver.solve()
+    zSolver.solve()
+
+    tol = assemble(J)
+    print(tol,"Tolerance")
 
 z, I, T = w.split()
 f = File('IZ.pvd')

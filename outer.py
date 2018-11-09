@@ -1,4 +1,5 @@
 from firedrake import *
+from firedrake_adjoint import *
 
 nx = 40
 Length = 1.0
@@ -23,6 +24,7 @@ c = Constant(0.2)
 sig = Constant(1.0e-2)
 
 U = FunctionSpace(mesh, "CG", 1)
+u = Function(U)
 
 n = FacetNormal(mesh)
 
@@ -31,7 +33,6 @@ x, t = SpatialCoordinate(mesh)
 #I0 = conditional(abs(x-0.5 - c*t) < 0.2, 1.0, 0.0)
 I0 = conditional(abs(x-0.5) < 0.2, 1.0, 0.0)
 #u = Function(U).interpolate(c)
-u = Function(U).interpolate(cos(pi*t))
 b = as_vector([u,1])
 
 thetaS = theta('+')
@@ -75,6 +76,19 @@ z0Solver = NonlinearVariationalSolver(z0Prob,
 zProb = NonlinearVariationalProblem(eqn1, w, bcs=bcs)
 zSolver = NonlinearVariationalSolver(zProb,
                                      solver_parameters=sparams)
+
+z0Solver.solve()
+zSolver.solve()
+
+J = assemble(1./2*z*z*dx)
+m = Control(u)
+Jhat = ReducedFunctionL(J, m)
+
+g_opt = minimize(Jhat, options={"disp": True})
+
+u.assign(g_opt)
+z0Solver.solve()
+zSolver.solve()
 
 z, I, T = w.split()
 f = File('IZ.pvd')

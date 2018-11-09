@@ -38,7 +38,7 @@ eqn = (
 
 I,z = TrialFunctions(W)
 
-aP = (dz*z + div(b*dz)*div(b*z) + dI*I)*dx
+aP = (dz*z + )*dx
 
 zProb = NonlinearVariationalProblem(eqn, w, Jp=aP)
 sparams = {'ksp_type':'gmres',
