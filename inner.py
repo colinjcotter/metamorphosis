@@ -61,7 +61,7 @@ sparams = {'ksp_type':'gmres',
            'mat_type':'matfree',
            'pc_type':'python',
            'pc_python_type':'scpc.HybridSCPC',
-           'hybrid_sc_ksp_type':'gmres',
+           'hybrid_sc_ksp_type':'preonly',
            'hybrid_sc_ksp_monitor':True,
            'hybrid_sc_pc_type':'lu'}
 

@@ -8,8 +8,8 @@ mesh = PeriodicRectangleMesh(nx, ny, Length, Height,
                              direction="x",
                              quadrilateral=True)
 
-VI = FunctionSpace(mesh, "DG", 1)
-VZ = FunctionSpace(mesh, "DG", 3)
+VI = FunctionSpace(mesh, "CG", 1)
+Vu = FunctionSpace(mesh, "CG", 1)
 T = FunctionSpace(mesh, "HDiv Trace", 1)
 
 W = VZ * VI * T
