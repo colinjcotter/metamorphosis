@@ -40,7 +40,8 @@ h = avg(CellVolume(mesh))/FacetArea(mesh)
 hpow = 2
 
 eqn_inner = (
-    inner(b, grad(phi))*inner(b, grad(I))*dx #consistent term
+    #inner(b, grad(phi))*inner(b, grad(I))*dx #consistent term (scalar)
+    div(b*phi)*div(b*I)*dx #consistent term (density)
     + gamma*h**hpow*inner(jump(grad(I)), jump(grad(phi)))*dS #edge stabilisation
 )
 
@@ -73,7 +74,8 @@ v2uSolver.solve()
 innerSolver.solve()
 
 J = assemble(0.5*(v*v*dx
-    + c*inner(b, grad(I))*inner(b, grad(I))*dx
+    #+ c*inner(b, grad(I))*inner(b, grad(I))*dx #(scalar)
+    + c*div(b*I)*div(b*I)*dx #density
     + c*gamma*h**hpow*inner(jump(grad(I)), jump(grad(I)))*dS #edge stabilisation
     ))
 
