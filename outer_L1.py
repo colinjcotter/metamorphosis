@@ -7,7 +7,7 @@ Height = 1.0
 ny = 40
 mesh = PeriodicRectangleMesh(nx, ny, Length, Height,
                              direction="x",
-                             quadrilateral=True)
+                             quadrilateral=False)
 
 VI = FunctionSpace(mesh, "DG", 1)
 VZ = FunctionSpace(mesh, "DG", 3)
@@ -34,7 +34,7 @@ params_dict = {
         }
     },
     'Status Test': {
-        'Gradient Tolerance': 1e-5,
+        'Gradient Tolerance': 1e-3,
         'Step Tolerance': 1e-16,
         'Relative Step Tolerance': 1e-10,
     'Iteration Limit': 100
@@ -54,17 +54,22 @@ else:
     I, z, theta = split(w)
     dI, dz, dtheta = TestFunctions(W)
 
-eps = Constant(1.0e-4)
-c = Constant(0.2)
-sig = Constant(1.0e-2)
+sig = Constant(1.0e-1)
 
 U = FunctionSpace(mesh, "CG", 1)
 u = Function(U).assign(0.2)
+
+
+#building funny quadrature
+cell = V.finat_element.cell
+subcell = cell.construct_subelement(cell.get_dimension() - 1)
+verts = subcell.get_vertices()
 
 n = FacetNormal(mesh)
 
 x, t = SpatialCoordinate(mesh)
 
+c = Constant(0.2)
 t0 = Constant(0.02)
 H = lambda x: 0.5*(tanh(-x/t0) + 1)
 
@@ -95,12 +100,13 @@ if hybrid:
     sparams = {'ksp_type':'gmres',
                'ksp_converged_reason':None,
                'mat_type':'matfree',
+               'pmat_type':'matfree',
                'pc_type':'python',
-               'pc_python_type':'scpc.HybridSCPC',
-               'hybrid_sc_ksp_type':'gmres',
-               'hybrid_sc_ksp_converged_reason':False,
-               'hybrid_sc_pc_type':'lu',
-               'hybrid_sc_pc_factor_mat_solver_type':'mumps'}
+               'pc_python_type':'firedrake.SCPC',
+               'pc_sc_eliminate_fields': '0, 1',
+               'condensed_field': {'ksp_type': 'preonly',
+                                   'pc_type': 'lu',
+                                   'pc_factor_mat_solver_type': 'mumps'}}
 else:
     sparams = {'ksp_type':'preonly',
                'snes_monitor':None,
@@ -147,7 +153,8 @@ z0Solver.solve()
 
 cu = Constant(0.00001)
 
-J = assemble(1./2*z*z*dx + cu*1./2*v0*u*dx)
+J = assemble(1./2*z*z*dx + cu*1./2*v0*u*dx +
+             sig*0.5*(thetaS*thetaS*dS + theta*theta*ds))
 m = Control(v0)
 Jhat = ReducedFunctional(J, m)
 
@@ -171,6 +178,4 @@ else:
 f = File('IZ2.pvd')
 
 z0Solver.solve()
-f.write(I,z,u)
-zSolver.solve()
 f.write(I,z,u)
