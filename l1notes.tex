@@ -1,0 +1,113 @@
+\documentclass{article}
+\usepackage{amsmath,amssymb,stmaryrd}
+\def\MM#1{\boldsymbol{#1}}
+\newcommand{\pp}[2]{\frac{\partial #1}{\partial #2}} 
+\newcommand{\dede}[2]{\frac{\delta #1}{\delta #2}}
+\newcommand{\dd}[2]{\frac{\diff#1}{\diff#2}}
+\newcommand{\dt}[1]{\diff\!#1}
+\def\MM#1{\boldsymbol{#1}}
+\DeclareMathOperator{\diff}{d}
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\sgn}{sgn}
+\DeclareMathOperator{\shrink}{shrink}
+\DeclareMathOperator{\DIV}{DIV}
+\DeclareMathOperator{\D}{D}
+\bibliographystyle{plain}
+\newcommand{\vecx}[1]{\MM{#1}}
+\newtheorem{definition}{Definition}
+\newcommand{\code}[1]{{\ttfamily #1}} 
+%uncomment \solnsfalse to remove solution set
+\newif\ifsolns
+%\solnstrue
+\solnsfalse
+
+\ifsolns
+% with solutions
+\newcommand{\soln}[1]{\newline \noindent {\bfseries Solution:} {\itshape #1}}
+\else
+% without solutions
+\newcommand{\soln}[1]{}
+\fi
+\usepackage[margin=2cm]{geometry}
+
+\usepackage{fancybox}
+\begin{document}
+\title{{L1 regularisation of ultraweak metamorphosis}}
+\author{Colin Cotter}
+\maketitle
+
+Solve
+\[
+\min_{u \in U,z \in Q,I \in V,\theta \in T} \frac{1}{2}\|u\|_B^2
++ \frac{1}{2}\|z\|_{L^2(\Omega)}^2 + \sigma \|\theta \|_{L^1(\Gamma),h},
+\]
+such that
+\begin{equation}
+  \label{eq:constraint}
+\int_\Omega \phi z \diff x + \int_\Omega \nabla\cdot(b \phi) I \diff x
+- \int_{\Gamma} [[\phi b]] \theta \diff S - \int_{\partial\Omega} \phi b\cdot n
+(\theta-I_0) \diff S, \quad \forall \phi \in Q,
+\end{equation}
+where $b=(u,1)$, and where $\|\cdot\|_{L^1(\Gamma,h)}$ is a mass-lumped
+$L_1$ integral,
+\[
+\|\theta \|_{L^p(\Gamma),h} = \left(\sum_i c_i |\theta_i|^p\right)^{1/p},
+\]
+where $c_i$ are the lumped coefficients.
+
+The iterative Bregman scheme is then to alternate between the
+following steps $N$ times (after initialising $d^{k+1}=d^k \in T$),
+\begin{equation}
+\label{eq:u}
+  (u^{k+1},z^{k+1},\theta^{k+1},I^{k+1})
+= \argmin_{u,z,\theta, I} \frac{1}{2}\|u\|_B^2
++ \frac{1}{2}\|z\|_{L^2(\Omega)}^2 + \frac{\sigma\lambda}{2}
+\|\theta + b^k - d^{k+1}\|_{L^2(\Gamma),h}^2,
+\end{equation}
+subject to the constraint \eqref{eq:constraint},
+then
+\begin{equation}
+  \label{eq:d}
+d^{k+1} = \argmin_d \|d\|_{L^1(\Gamma),h}
++ \frac{\lambda}{2}\|d-\theta^{k+1}-b^k\|_{L^2(\Gamma), h}^2.
+\end{equation}
+Then we update
+\[
+b^{k+1} = b^k + \theta^{k+1} - d^{k+1}.
+\]
+\eqref{eq:d} has the explicit solution
+\[
+d^{k+1}_i = \shrink(\theta^{k+1}_i + b^k_i, 1/\lambda),
+\]
+where
+\[
+\shrink(x, \gamma) = \sgn(x)*\max(|x|-\gamma, 0).
+\]
+This can be implemented independently for each basis coefficient of $d$.
+
+To implement the minimisation of \eqref{eq:u} we introduce a Lagrange multiplier
+$\phi\in Q$ and extremise the functional
+\[
+S[u,z,I,\theta,\phi] = \frac{1}{2}\|u\|_B^2 + \frac{1}{2}\|z\|_{L^2(\Omega)}^2 +
+\frac{\sigma\lambda}{2} \|\theta + b^k - d^{k+1} \|^2_{L^2(\Gamma),h} 
+- \int_\Omega \phi z \diff x - \int_\Omega \nabla\cdot(b \phi) I \diff x
++ \int_{\Gamma} [[\phi b]] \theta \diff S + \int_{\Gamma} \phi b\cdot n
+(\theta-I_0) \diff S.
+\]
+After computing the Euler-Lagrange equations we notice that $\phi=z$,
+and that given $u$ we can obtain the other variables by solving the
+linear mixed system
+\begin{align}
+  \int_\Omega \phi z \diff x + \int_\Omega \nabla\cdot(b \phi) I \diff x
+- \int_{\Gamma} [[\phi b]] \theta \diff S - \int_{\Gamma} \phi b\cdot n
+(\theta-I_0) \diff S &= 0, \qquad \forall \phi \in Q, \\
+-\int_\Omega \nabla\cdot(b z) J \diff x & = 0, \qquad \forall J \in V, \\
+\int_\Gamma [[z b]] \gamma \diff S +
+\int_{\partial\Omega} z b.n \gamma \diff S +
+\sigma\lambda\int_\Gamma
+\langle \gamma ,\theta + b^k - d^{k+1} \rangle_{L^2(\Gamma),h} & = 0, \qquad
+\forall \gamma \in T.
+\end{align}
+We can then perform an outer minimisation of $S[u,z^*(u),I^*(u),\theta^*(u),\phi=0]$ subject to this constraint.
+
+\end{document}

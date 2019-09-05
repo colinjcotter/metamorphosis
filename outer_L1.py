@@ -1,6 +1,8 @@
 from firedrake import *
 from firedrake_adjoint import *
 
+file0 = File('IZ_l1.pvd')
+
 nx = 40
 Length = 1.0
 Height = 1.0
@@ -54,16 +56,27 @@ else:
     I, z, theta = split(w)
     dI, dz, dtheta = TestFunctions(W)
 
+#l1 variables
+bk = Function(T)
+dk = Function(T)
+    
 sig = Constant(1.0e-1)
+lda = Constant(1.0)
 
 U = FunctionSpace(mesh, "CG", 1)
 u = Function(U).assign(0.2)
 
 
 #building funny quadrature
-cell = V.finat_element.cell
+cell = U.finat_element.cell
 subcell = cell.construct_subelement(cell.get_dimension() - 1)
 verts = subcell.get_vertices()
+assert(len(verts)==2)
+assert(len(verts[0])==1)
+from finat import quadrature, point_set
+points = point_set.PointSet(verts)
+weights = [0.5, 0.5]
+Vrule = quadrature.QuadratureRule(points, weights)
 
 n = FacetNormal(mesh)
 
@@ -81,6 +94,8 @@ b = as_vector([u,1])
 
 thetaS = theta('+')
 dthetaS = dtheta('+')
+bkS = bk('+')
+dkS = dk('+')
 
 dS0 = dS(degree=6)
 ds0 = ds(degree=6)
@@ -94,7 +109,8 @@ eqn = (
     #- div(b)*z*dI*dx density mode
     + jump(b*z,n)*dthetaS*dS
 )
-eqn += sig*dtheta*theta*ds + sig*dthetaS*thetaS*dS
+eqn += sig*lda*dtheta*(theta+bk-dk)*ds(rule=Vrule) + \
+                    sig*lda*dthetaS*(thetaS+bks-dks)*dS(rule=Vrule)
 
 if hybrid:
     sparams = {'ksp_type':'gmres',
@@ -151,31 +167,37 @@ v2Solver.solve()
 z0Solver.solve()
 #zSolver.solve()
 
-cu = Constant(0.00001)
-
+cu = Constant(0.001) #metamorphosis penalty parameter (inverse)
 J = assemble(1./2*z*z*dx + cu*1./2*v0*u*dx +
-             sig*0.5*(thetaS*thetaS*dS + theta*theta*ds))
+             sig*lda*0.5*(thetaS*thetaS*dS(rule=Vrule)
+                      + theta*theta*ds(rule=Vrule)))
 m = Control(v0)
+b_ctrl = Control(bk)
+d_ctrl = Control(dk)
 Jhat = ReducedFunctional(J, m)
+Jhat.optimize_tape()
 
 # Define optimisation problem
 problem = MinimizationProblem(Jhat)
 
 solver = ROLSolver(problem, params_dict, inner_product="L2")
-z_opt = solver.solve()
-
-v0.assign(z_opt)
-v0Solver.solve()
-v1Solver.solve()
-v2Solver.solve()
-z0Solver.solve()
-#zSolver.solve()
 
 if hybrid:
     I, z, T = w.split()
 else:
     z, I, T = w.split()
-f = File('IZ2.pvd')
 
-z0Solver.solve()
-f.write(I,z,u)
+nits = 5
+Ninner = 2
+
+bkval = Function(T)
+dkval = Function(T)
+
+for it in range(nits):
+    for inner in range(Ninner):
+        z_opt = solver.solve()
+        file0.write(I,z,u)
+        dkval.assign( sign(theta+b)*max(abs(theta+b)-1/lda, 0) )
+        d_ctrl.tape_value().assign(dkval)
+    bkval.assign( bkval + theta - dkval )
+    b_ctrl.tape_value().assign(bkval)
