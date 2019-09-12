@@ -63,7 +63,7 @@ bk = Function(T)
 dk = Function(T)
 
 sig = Constant(1.0e-1)
-lval = 1.0
+lval = 1.0e-2
 lda = Constant(lval)
 
 U = FunctionSpace(mesh, "CG", 1)
@@ -200,9 +200,17 @@ thetaval = Function(T)
 for it in range(nits):
     for inner in range(Ninner):
         z_opt = solver.solve()
+
+        print("reconstructing image")
+        v0.assign(z_opt, annotate=False)
+        v0Solver.solve(annotate=False)
+        v1Solver.solve(annotate=False)
+        v2Solver.solve(annotate=False)
+        z0Solver.solve(annotate=False)
+
         #thetaval.project(theta)
-        dkval.assign( ufl.sign(theta+bkval)*ufl.Max(abs(theta+bkval)-1/lval, 0) )
+        dkval.assign( ufl.sign(theta+bkval)*ufl.Max(abs(theta+bkval)-1/lval, 0), annotate=False)
         d_ctrl.tape_value().assign(dkval)
-    bkval.assign( bkval + theta - dkval )
+    bkval.assign( bkval + theta - dkval, annotate=False)
     b_ctrl.tape_value().assign(bkval)
     file0.write(I,z,u)
